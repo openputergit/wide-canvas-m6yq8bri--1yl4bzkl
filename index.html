@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrainTeaser - Math & Aptitude Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f9ff;
+        }
+        .quiz-card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .option-btn:hover {
+            transform: translateY(-2px);
+            transition: all 0.2s;
+        }
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-600 mb-2">BrainTeaser</h1>
+            <p class="text-gray-600">Challenge your mind with Math & Aptitude Puzzles</p>
+        </header>
+
+        <!-- Category Selection -->
+        <div id="category-section" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <button onclick="startQuiz('math')" class="option-btn bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-lg">
+                <i class="bi bi-calculator text-2xl mb-2"></i>
+                <div>Mathematics</div>
+            </button>
+            <button onclick="startQuiz('logical')" class="option-btn bg-green-500 hover:bg-green-600 text-white p-4 rounded-lg">
+                <i class="bi bi-diagram-3 text-2xl mb-2"></i>
+                <div>Logical Reasoning</div>
+            </button>
+            <button onclick="startQuiz('probability')" class="option-btn bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-lg">
+                <i class="bi bi-dice-6 text-2xl mb-2"></i>
+                <div>Probability</div>
+            </button>
+        </div>
+
+        <!-- Quiz Section -->
+        <div id="quiz-section" class="hidden">
+            <div class="quiz-card p-6 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="text-lg font-semibold text-gray-700">Question <span id="question-number">1</span>/5</div>
+                    <div class="text-lg font-semibold text-gray-700">Time: <span id="timer">60</span>s</div>
+                </div>
+                <div id="question-text" class="text-xl mb-6 text-gray-800"></div>
+                <div id="options" class="space-y-3">
+                    <!-- Options will be inserted here -->
+                </div>
+            </div>
+            <button id="next-btn" onclick="nextQuestion()" class="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors hidden">
+                Next Question
+            </button>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-section" class="hidden text-center">
+            <div class="quiz-card p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Quiz Complete!</h2>
+                <div class="text-4xl font-bold text-blue-500 mb-4">Score: <span id="final-score">0</span>/5</div>
+                <div class="space-y-2 mb-6">
+                    <div class="text-gray-600">Time taken: <span id="time-taken">0</span> seconds</div>
+                    <div class="text-gray-600">Correct answers: <span id="correct-answers">0</span></div>
+                </div>
+                <button onclick="restartQuiz()" class="bg-blue-500 text-white py-3 px-6 rounded-lg hover:bg-blue-600 transition-colors">
+                    Try Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentQuestion = 0;
+        let score = 0;
+        let timer;
+        let timeLeft = 60;
+        let questions = [];
+        let category = '';
+        let startTime;
+        let userId = localStorage.getItem('userId') || 'user_' + Math.random().toString(36).substr(2, 9);
+
+        // Save userId to localStorage
+        if (!localStorage.getItem('userId')) {
+            localStorage.setItem('userId', userId);
+        }
+
+        const mathQuestions = [
+            {
+                question: "If 2x + 3 = 11, what is x?",
+                options: ["4", "5", "3", "6"],
+                correct: 0
+            },
+            {
+                question: "What comes next in the series: 2, 4, 8, 16, __?",
+                options: ["32", "24", "20", "28"],
+                correct: 0
+            },
+            {
+                question: "Simplify: (15 + 3) × 2 - 10",
+                options: ["26", "36", "28", "24"],
+                correct: 0
+            },
+            {
+                question: "What is 25% of 80?",
+                options: ["20", "15", "25", "30"],
+                correct: 0
+            },
+            {
+                question: "If a square has a perimeter of 20cm, what is its area?",
+                options: ["25cm2", "16cm2", "20cm2", "100cm2"],
+                correct: 1
+            }
+        ];
+
+        const logicalQuestions = [
+            {
+                question: "If all flowers are plants, and some plants are trees, then:",
+                options: [
+                    "All flowers are trees",
+                    "Some flowers might be trees",
+                    "No flowers are trees",
+                    "All trees are flowers"
+                ],
+                correct: 1
+            },
+            {
+                question: "Which word does NOT belong: Apple, Orange, Banana, Carrot",
+                options: ["Apple", "Orange", "Banana", "Carrot"],
+                correct: 3
+            },
+            {
+                question: "If RED is coded as 27, then BLUE is coded as:",
+                options: ["29", "38", "42", "31"],
+                correct: 2
+            },
+            {
+                question: "Complete the pattern: Triangle, Square, Pentagon, ?",
+                options: ["Circle", "Rectangle", "Hexagon", "Octagon"],
+                correct: 2
+            },
+            {
+                question: "If today is Tuesday, what day will it be after 100 days?",
+                options: ["Monday", "Tuesday", "Wednesday", "Thursday"],
+                correct: 3
+            }
+        ];
+
+        const probabilityQuestions = [
+            {
+                question: "What is the probability of rolling a 6 on a fair die?",
+                options: ["1/6", "1/3", "1/2", "1/4"],
+                correct: 0
+            },
+            {
+                question: "In a deck of 52 cards, what is the probability of drawing a heart?",
+                options: ["1/4", "1/2", "1/13", "13/52"],
+                correct: 0
+            },
+            {
+                question: "If you flip a fair coin twice, what is the probability of getting two heads?",
+                options: ["1/4", "1/2", "1/3", "3/4"],
+                correct: 0
+            },
+            {
+                question: "What is the probability of rolling an even number on a fair die?",
+                options: ["1/2", "1/3", "2/3", "1/6"],
+                correct: 0
+            },
+            {
+                question: "In a bag with 3 red and 2 blue marbles, what's the probability of drawing a blue marble?",
+                options: ["2/5", "3/5", "1/2", "1/5"],
+                correct: 0
+            }
+        ];
+
+        async function saveProgress() {
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/db', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer sHsBzKJcfERQXKMbTPZzXKfhxyJ2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        appSlug: 'math-quiz-app',
+                        action: 'create',
+                        table: 'quiz_results',
+                        data: {
+                            category: category,
+                            score: score,
+                            timeTaken: 60 - timeLeft
+                        }
+                    })
+                });
+                const data = await response.json();
+                console.log('Progress saved:', data);
+            } catch (error) {
+                console.error('Error saving progress:', error);
+            }
+        }
+
+        function startQuiz(selectedCategory) {
+            category = selectedCategory;
+            currentQuestion = 0;
+            score = 0;
+            timeLeft = 60;
+            startTime = Date.now();
+
+            switch(selectedCategory) {
+                case 'math':
+                    questions = mathQuestions;
+                    break;
+                case 'logical':
+                    questions = logicalQuestions;
+                    break;
+                case 'probability':
+                    questions = probabilityQuestions;
+                    break;
+            }
+
+            document.getElementById('category-section').classList.add('hidden');
+            document.getElementById('quiz-section').classList.remove('hidden');
+            document.getElementById('results-section').classList.add('hidden');
+
+            startTimer();
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const question = questions[currentQuestion];
+            document.getElementById('question-number').textContent = currentQuestion + 1;
+            document.getElementById('question-text').textContent = question.question;
+            
+            const optionsContainer = document.getElementById('options');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'w-full text-left p-4 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors';
+                button.onclick = () => selectAnswer(index);
+                button.textContent = option;
+                optionsContainer.appendChild(button);
+            });
+
+            document.getElementById('next-btn').classList.add('hidden');
+        }
+
+        function selectAnswer(index) {
+            const buttons = document.getElementById('options').children;
+            for (let button of buttons) {
+                button.classList.remove('bg-green-200', 'bg-red-200');
+                button.disabled = true;
+            }
+
+            if (index === questions[currentQuestion].correct) {
+                buttons[index].classList.add('bg-green-200');
+                score++;
+            } else {
+                buttons[index].classList.add('bg-red-200');
+                buttons[questions[currentQuestion].correct].classList.add('bg-green-200');
+            }
+
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            if (currentQuestion < questions.length) {
+                showQuestion();
+            } else {
+                endQuiz();
+            }
+        }
+
+        function startTimer() {
+            clearInterval(timer);
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    endQuiz();
+                }
+            }, 1000);
+        }
+
+        async function endQuiz() {
+            clearInterval(timer);
+            const timeTaken = 60 - timeLeft;
+            
+            document.getElementById('quiz-section').classList.add('hidden');
+            document.getElementById('results-section').classList.remove('hidden');
+            
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('time-taken').textContent = timeTaken;
+            document.getElementById('correct-answers').textContent = score;
+
+            await saveProgress();
+        }
+
+        function restartQuiz() {
+            document.getElementById('results-section').classList.add('hidden');
+            document.getElementById('category-section').classList.remove('hidden');
+        }
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
